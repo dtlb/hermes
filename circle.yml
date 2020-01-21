@@ -1,0 +1,158 @@
+version: 2.1
+
+executors:
+  test-base:
+    resource_class: large
+    docker:
+    - image: datalogue-docker.jfrog.io/circleci/test-base-image:0.2
+      auth:
+        username: $ARTIFACTORY_USERNAME
+        password: $ARTIFACTORY_PASSWORD
+
+    - image: nats
+
+commands:
+  build_and_run_test:
+    steps:
+    - run:
+        name: Builds and runs tests
+        command: sbt clean compile coverage test coverageReport coverageAggregate
+
+  send_test_coverage:
+    steps:
+    - run:
+        name: Sends report for test coverage
+        command: bash <(curl -s https://codecov.io/bash)
+
+  set_version_sbt:
+    parameters:
+      version_number:
+        type: string
+        default: "version number"
+    steps:
+    - run:
+        name: Creates the version.sbt with correct version
+        command: echo 'version in ThisBuild := "'<< parameters.version_number >>'"' > version.sbt
+
+  build_docker_image:
+    steps:
+    - run:
+        name: Builds the docker image
+        command: sbt dockerLogin pack dockerBuild
+
+  push_docker_image:
+    steps:
+    - run:
+        name: Push docker image to the artifactory
+        command: sbt dockerLogin dockerPush
+
+  check_release_notes:
+    parameters:
+      version_number:
+        type: string
+        default: "version number"
+    steps:
+    - run:
+        name: Checks if there is a section for this version
+        command: exists_release_notes $(pwd)/release/notes.yaml << parameters.version_number >>
+
+  publish_release_notes:
+    parameters:
+      version_number:
+        type: string
+        default: "version number"
+      is_pre_release:
+        type: string
+        default: "True"
+    steps:
+    - run:
+        name: Publishing release artifacts/notes to GitHub
+        command: publish_release_notes $GITHUB_TOKEN $(pwd)/release/notes.yaml hermes << parameters.version_number >> << parameters.is_pre_release >>
+
+jobs:
+  build_release:
+    executor: test-base
+    working_directory: ~/hermes
+    steps:
+    - setup_remote_docker
+
+    - checkout
+
+    - build_and_run_test
+
+    - send_test_coverage
+
+    - set_version_sbt:
+        version_number: "$(cat release/version.dtl)"
+
+    - check_release_notes:
+        version_number: "$(cat release/version.dtl)"
+
+    - build_docker_image
+
+    - push_docker_image
+
+    - publish_release_notes:
+        version_number: "$(cat release/version.dtl)"
+        is_pre_release: "False"
+
+  build_release_candidate:
+    executor: test-base
+    working_directory: ~/hermes
+    steps:
+    - setup_remote_docker
+
+    - checkout
+
+    - build_and_run_test
+
+    - send_test_coverage
+
+    - set_version_sbt:
+        version_number: "$(cat release/version.dtl)-RC"
+
+    - check_release_notes:
+        version_number: "$(cat release/version.dtl)"
+
+    - build_docker_image
+
+    - push_docker_image
+
+    - publish_release_notes:
+        version_number: "$(cat release/version.dtl)"
+        is_pre_release: "True"
+
+  build_other_branches:
+    executor: test-base
+    working_directory: ~/hermes
+    steps:
+    - setup_remote_docker
+
+    - checkout
+
+    - build_and_run_test
+
+    - send_test_coverage
+
+workflows:
+  version: 2
+  release_process:
+    jobs:
+    - build_release:
+        filters:
+          branches:
+            only:
+            - master
+
+    - build_release_candidate:
+        filters:
+          branches:
+            only:
+            - /release\-[0-9]+\.[0-9]+\.[0-9]+/
+
+    - build_other_branches:
+        filters:
+          branches:
+            ignore:
+              - master
+              - /release\-[0-9]+\.[0-9]+\.[0-9]+/
