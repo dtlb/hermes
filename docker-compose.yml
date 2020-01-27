@@ -1,9 +1,11 @@
 version: '3.2'
 
 services:
-  nats:
-    container_name: nats-hermes
-    image: nats
+
+  nats-streaming:
+    container_name: nats-streaming
+    entrypoint: "/nats-streaming-server -DV"
+    image: nats-streaming
     ports:
       - "4222:4222"
       - "6222:6222"

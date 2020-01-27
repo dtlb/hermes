@@ -1,34 +1,41 @@
 package io.datalogue.hermes.nats
 
-import io.nats.client.{Connection, Message, Nats, Subscription}
 
-import scala.compat.java8.FutureConverters
-import scala.concurrent.Future
+import io.nats.streaming.{Options, StreamingConnection, Subscription, SubscriptionOptions, Message => StreamMessage}
 
-class NatsConnection(connection: Connection) {
+class NatsConnection(connection: StreamingConnection) {
 
   def publish(topic: String, body: Array[Byte]) = {
     connection.publish(topic, body)
   }
 
-  def send(topic: String, body: Array[Byte]): Future[Message] = {
-    val future = connection.request(topic, body)
-    FutureConverters.toScala(future)
+  def subscribe(topic: String, f: StreamMessage => Unit, options: Option[SubscriptionOptions] = None): Subscription = {
+    connection.subscribe(topic, (msg: StreamMessage) => {
+      f(msg)
+    }, options match {
+      case None => new SubscriptionOptions.Builder()
+        .deliverAllAvailable()
+        .build()
+      case Some(options) => options
+    })
   }
 
-  def subscribe(topic: String, f: Message => Unit): Subscription = {
-    val dispatcher = connection.createDispatcher(_=>{})
-    dispatcher.subscribe(topic, (msg: Message) => {
-      f(msg)
-    })
+  def close(): Unit = {
+    connection.close()
   }
 }
 
 object NatsConnection {
-  def apply(url: String): NatsConnection = {
+  def apply(url: String, clusterId: String, clientId: String): NatsConnection = {
 
-    new NatsConnection(Nats.connect(url))
+    import io.nats.streaming.StreamingConnectionFactory
+    val opts: Options = new Options.Builder()
+      .clientId(clientId)
+      .clusterId(clusterId)
+      .natsUrl(url)
+      .build()
+    val con = new StreamingConnectionFactory(opts).createConnection()
+    new NatsConnection(con)
   }
 
-  def apply(): NatsConnection = new NatsConnection(Nats.connect())
 }
