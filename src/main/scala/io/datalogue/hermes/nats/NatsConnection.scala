@@ -3,6 +3,7 @@ package io.datalogue.hermes.nats
 
 import io.nats.streaming.{Options, StreamingConnection, Subscription, SubscriptionOptions, Message => StreamMessage}
 
+
 class NatsConnection(connection: StreamingConnection) {
 
   def publish(topic: String, body: Array[Byte]) = {

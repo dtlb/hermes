@@ -15,6 +15,7 @@ lazy val nexus = project.in(file("."))
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % Version.scalaTest % Test,
       "io.nats" % "jnats" % Version.jnats,
-      "io.nats" % "java-nats-streaming" % Version.jnatsStreaming
+      "io.nats" % "java-nats-streaming" % Version.jnatsStreaming,
+      "co.fs2" %% "fs2-core" % "2.2.1"
     )
   )
