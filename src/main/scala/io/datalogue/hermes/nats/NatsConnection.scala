@@ -1,13 +1,45 @@
 package io.datalogue.hermes.nats
 
 
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
+
+import cats.effect.IO
 import io.nats.streaming.{Options, StreamingConnection, Subscription, SubscriptionOptions, Message => StreamMessage}
+import org.log4s.getLogger
 
 
 class NatsConnection(connection: StreamingConnection) {
 
+  private val log = getLogger
+
   def publish(topic: String, body: Array[Byte]) = {
     connection.publish(topic, body)
+  }
+
+  def subscribeAsStream(topic: String, options: Option[SubscriptionOptions] = None): fs2.Stream[IO, StreamMessage] = {
+    val q = new LinkedBlockingQueue[StreamMessage]
+
+    val subscription = subscribe(topic, (msg: StreamMessage) => {
+      q.put(msg)
+      log.info(s"received message, queue size ${q.size}")
+    }, options)
+
+    fs2.Stream.iterate(1)(_ + 1)
+        .map(_ => {
+          val msg = q.poll(1, TimeUnit.SECONDS)
+          if (msg != null) {
+            log.info(s"pull message, queue size ${q.size}")
+          } else {
+            log.debug("no messages in queue")
+          }
+          msg
+        })
+      .collect {
+        case msg if msg != null => msg
+      }
+      .onFinalize(IO {
+        subscription.unsubscribe()
+      })
   }
 
   def subscribe(topic: String, f: StreamMessage => Unit, options: Option[SubscriptionOptions] = None): Subscription = {
