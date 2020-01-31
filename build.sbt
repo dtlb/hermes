@@ -3,6 +3,8 @@ lazy val Version = new {
   val jnats          = "2.6.6"
   val jnatsStreaming = "2.2.3"
   val scalaTest      = "3.0.5"
+  val fs2 = "2.2.1"
+  val log4s = "1.8.2"
 }
 // @formatter:on
 
@@ -16,6 +18,7 @@ lazy val nexus = project.in(file("."))
       "org.scalatest" %% "scalatest" % Version.scalaTest % Test,
       "io.nats" % "jnats" % Version.jnats,
       "io.nats" % "java-nats-streaming" % Version.jnatsStreaming,
-      "co.fs2" %% "fs2-core" % "2.2.1"
+      "co.fs2" %% "fs2-core" % Version.fs2,
+      "org.log4s" %% "log4s" % Version.log4s
     )
   )
