@@ -1,34 +1,74 @@
 package io.datalogue.hermes.nats
 
-import io.nats.client.{Connection, Message, Nats, Subscription}
 
-import scala.compat.java8.FutureConverters
-import scala.concurrent.Future
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 
-class NatsConnection(connection: Connection) {
+import cats.effect.IO
+import io.nats.streaming.{Options, StreamingConnection, Subscription, SubscriptionOptions, Message => StreamMessage}
+import org.log4s.getLogger
+
+
+class NatsConnection(connection: StreamingConnection) {
+
+  private val log = getLogger
 
   def publish(topic: String, body: Array[Byte]) = {
     connection.publish(topic, body)
   }
 
-  def send(topic: String, body: Array[Byte]): Future[Message] = {
-    val future = connection.request(topic, body)
-    FutureConverters.toScala(future)
+  def subscribeAsStream(topic: String, options: Option[SubscriptionOptions] = None): fs2.Stream[IO, StreamMessage] = {
+    val q = new LinkedBlockingQueue[StreamMessage]
+
+    val subscription = subscribe(topic, (msg: StreamMessage) => {
+      q.put(msg)
+      log.info(s"received message, queue size ${q.size}")
+    }, options)
+
+    fs2.Stream.iterate(1)(_ + 1)
+        .map(_ => {
+          val msg = q.poll(1, TimeUnit.SECONDS)
+          if (msg != null) {
+            log.info(s"pull message, queue size ${q.size}")
+          } else {
+            log.debug("no messages in queue")
+          }
+          msg
+        })
+      .collect {
+        case msg if msg != null => msg
+      }
+      .onFinalize(IO {
+        subscription.unsubscribe()
+      })
   }
 
-  def subscribe(topic: String, f: Message => Unit): Subscription = {
-    val dispatcher = connection.createDispatcher(_=>{})
-    dispatcher.subscribe(topic, (msg: Message) => {
+  def subscribe(topic: String, f: StreamMessage => Unit, options: Option[SubscriptionOptions] = None): Subscription = {
+    connection.subscribe(topic, (msg: StreamMessage) => {
       f(msg)
+    }, options match {
+      case None => new SubscriptionOptions.Builder()
+        .deliverAllAvailable()
+        .build()
+      case Some(options) => options
     })
+  }
+
+  def close(): Unit = {
+    connection.close()
   }
 }
 
 object NatsConnection {
-  def apply(url: String): NatsConnection = {
+  def apply(url: String, clusterId: String, clientId: String): NatsConnection = {
 
-    new NatsConnection(Nats.connect(url))
+    import io.nats.streaming.StreamingConnectionFactory
+    val opts: Options = new Options.Builder()
+      .clientId(clientId)
+      .clusterId(clusterId)
+      .natsUrl(url)
+      .build()
+    val con = new StreamingConnectionFactory(opts).createConnection()
+    new NatsConnection(con)
   }
 
-  def apply(): NatsConnection = new NatsConnection(Nats.connect())
 }

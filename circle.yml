@@ -8,7 +8,7 @@ executors:
           username: $ARTIFACTORY_USERNAME
           password: $ARTIFACTORY_PASSWORD
 
-      - image: nats
+      - image: nats-streaming
 
 commands:
   build_and_run_test:
