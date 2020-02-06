@@ -19,9 +19,9 @@ class NatsConnection(connection: StreamingConnection) {
   def subscribeAsStream(topic: String, options: Option[SubscriptionOptions] = None): fs2.Stream[IO, StreamMessage] = {
     val q = new LinkedBlockingQueue[StreamMessage]
 
-    val subscription = subscribe(topic, (msg: StreamMessage) => {
+    subscribe(topic, (msg: StreamMessage) => {
       q.put(msg)
-      log.info(s"received message, queue size ${q.size}")
+      log.info(s"received message, queue size ${q.size}, ${msg.getSequence}")
     }, options)
 
     fs2.Stream.iterate(1)(_ + 1)
@@ -37,9 +37,6 @@ class NatsConnection(connection: StreamingConnection) {
       .collect {
         case msg if msg != null => msg
       }
-      .onFinalize(IO {
-        subscription.unsubscribe()
-      })
   }
 
   def subscribe(topic: String, f: StreamMessage => Unit, options: Option[SubscriptionOptions] = None): Subscription = {
