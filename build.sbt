@@ -3,7 +3,7 @@ lazy val Version = new {
   val jnats          = "2.6.6"
   val jnatsStreaming = "2.2.3"
   val scalaTest      = "3.0.5"
-  val fs2 = "2.2.1"
+  val fs2 = "1.0.5"
   val log4s = "1.8.2"
 }
 // @formatter:on
