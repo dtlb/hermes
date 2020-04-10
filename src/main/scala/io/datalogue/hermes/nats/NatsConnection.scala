@@ -63,6 +63,7 @@ object NatsConnection {
     val opts: Options = new Options.Builder()
       .clientId(clientId)
       .clusterId(clusterId)
+      .errorListener(new NatsErrorListener())
       .natsUrl(url)
       .build()
 
@@ -70,4 +71,10 @@ object NatsConnection {
       .map(new NatsConnection(_))
   }
 
+
+
 }
+
+
+
+
