@@ -2,3 +2,11 @@
   bug fixes: []
   build: []
   features:
+    - More loggings
+
+
+- version: 0.1.0
+  bug fixes: []
+  build: []
+  features:
+    - Initial implementation of NATS Streaming Server
