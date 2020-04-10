@@ -11,10 +11,10 @@ class NatsErrorListener extends ErrorListener {
   }
 
   def exceptionOccurred(conn: Connection, exp: Exception): Unit = {
-    log.info("The connection handled an exception: " + exp.getLocalizedMessage)
+    log.error("The connection handled an exception: " + exp.getLocalizedMessage)
   }
 
   def slowConsumerDetected(conn: Connection, consumer: Consumer): Unit = {
-    log.info("A slow consumer was detected.")
+    log.warn("A slow consumer was detected.")
   }
 }
