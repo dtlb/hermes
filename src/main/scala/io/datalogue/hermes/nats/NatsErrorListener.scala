@@ -1,17 +1,20 @@
 package io.datalogue.hermes.nats
 
 import io.nats.client.{Connection, Consumer, ErrorListener}
+import org.log4s.getLogger
 
 class NatsErrorListener extends ErrorListener {
+
+  private val log = getLogger
   def errorOccurred(conn: Connection, error: String): Unit = {
-    System.out.println("The server notificed the client with: " + error)
+    log.info("The server notificed the client with: " + error)
   }
 
   def exceptionOccurred(conn: Connection, exp: Exception): Unit = {
-    System.out.println("The connection handled an exception: " + exp.getLocalizedMessage)
+    log.info("The connection handled an exception: " + exp.getLocalizedMessage)
   }
 
   def slowConsumerDetected(conn: Connection, consumer: Consumer): Unit = {
-    System.out.println("A slow consumer was detected.")
+    log.info("A slow consumer was detected.")
   }
 }

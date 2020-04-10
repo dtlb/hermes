@@ -70,11 +70,4 @@ object NatsConnection {
     IO.fromTry(Try(new StreamingConnectionFactory(opts).createConnection()))
       .map(new NatsConnection(_))
   }
-
-
-
 }
-
-
-
-
