@@ -1,4 +1,5 @@
 - version: 0.1.0
   bug fixes: []
   build: []
-  features:
+  features: 
+    - "Be able to connect to NATS"
